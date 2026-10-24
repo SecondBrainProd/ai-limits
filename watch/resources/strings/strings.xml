@@ -1,0 +1,23 @@
+<strings>
+    <string id="AppName" scope="glance">AI Limits</string>
+    <string id="SessionShort" scope="glance">5h</string>
+    <string id="SessionFull" scope="glance">Session · 5h</string>
+    <string id="WeekShort" scope="glance">7d</string>
+    <string id="WeekFull" scope="glance">Week</string>
+    <string id="ResetsIn" scope="glance">resets in</string>
+    <string id="ResetDone" scope="glance">reset</string>
+    <string id="Updated" scope="glance">updated</string>
+    <string id="JustNow" scope="glance">just now</string>
+    <string id="Ago" scope="glance">ago</string>
+    <string id="UnitD" scope="glance">d</string>
+    <string id="UnitH" scope="glance">h</string>
+    <string id="UnitM" scope="glance">m</string>
+    <string id="NoData" scope="glance">no data</string>
+    <string id="Loading" scope="glance">Loading…</string>
+    <string id="PairRun" scope="glance">On your computer run:</string>
+    <string id="PairShort" scope="glance">pair</string>
+    <string id="ForClaudeCode" scope="glance">for Claude Code</string>
+    <string id="UnpairQ" scope="glance">Unpair this watch?</string>
+    <string id="NoConnection" scope="glance">no connection</string>
+    <string id="OpenToPair" scope="glance">open to pair</string>
+</strings>

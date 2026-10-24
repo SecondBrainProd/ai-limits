@@ -1,0 +1,18 @@
+# AI Limits relay + landing page (github.com/SecondBrainProd/ai-limits)
+# The Caddy container must mount the repository root read-only at /srv/ailimits-src
+# (mount the root, not relay/deploy/www: a deploy that replaces the directory
+# contents would leave a mount on a subdirectory stale).
+# No `log` directive on purpose: no access log, so no client IPs on disk.
+ailimits.second-brain.ru {
+    encode gzip
+    handle /v1/* {
+        reverse_proxy ailimits-relay:8080
+    }
+    handle /healthz {
+        reverse_proxy ailimits-relay:8080
+    }
+    handle {
+        root * /srv/ailimits-src/relay/deploy/www
+        file_server
+    }
+}

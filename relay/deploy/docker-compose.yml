@@ -1,0 +1,39 @@
+# The relay behind a Caddy reverse proxy (see Caddyfile.snippet).
+#   AILIMITS_DATA_DIR=/srv/ailimits-data PROXY_NETWORK=proxy docker compose up -d --build
+# AILIMITS_DATA_DIR keeps the SQLite database OUTSIDE the code directory, so a deploy
+# can replace the code wholesale. One-time setup:
+#   install -d -o 65532 -g 65532 -m 700 /srv/ailimits-data   (uid 65532 = distroless nonroot)
+# PROXY_NETWORK is the existing Docker network of your Caddy container.
+services:
+  ailimits-relay:
+    build:
+      context: ../..
+      dockerfile: relay/deploy/Dockerfile
+    image: ailimits-relay:local
+    container_name: ailimits-relay
+    restart: unless-stopped
+    mem_limit: 128m
+    environment:
+      GOMEMLIMIT: 100MiB
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "3"}
+    volumes:
+      - ${AILIMITS_DATA_DIR:?set AILIMITS_DATA_DIR to the data directory}:/data
+    networks:
+      - proxy               # port intentionally not published; Caddy proxies by name
+    healthcheck:
+      test: ["CMD", "/ailimits-relay", "-addr", ":8080", "-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK:?set PROXY_NETWORK to the Caddy Docker network}
+    external: true

@@ -1,0 +1,3 @@
+project.manifest = manifest.xml
+# (:test) code in test/ is stripped from normal builds and compiled only with --unit-test.
+base.sourcePath = source;test

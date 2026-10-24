@@ -1,0 +1,23 @@
+<strings>
+    <string id="AppName" scope="glance">AI Limits</string>
+    <string id="SessionShort" scope="glance">5 ч</string>
+    <string id="SessionFull" scope="glance">Сессия · 5 ч</string>
+    <string id="WeekShort" scope="glance">7 дн</string>
+    <string id="WeekFull" scope="glance">Неделя</string>
+    <string id="ResetsIn" scope="glance">сброс через</string>
+    <string id="ResetDone" scope="glance">сброшено</string>
+    <string id="Updated" scope="glance">обновлено</string>
+    <string id="JustNow" scope="glance">только что</string>
+    <string id="Ago" scope="glance">назад</string>
+    <string id="UnitD" scope="glance">д</string>
+    <string id="UnitH" scope="glance">ч</string>
+    <string id="UnitM" scope="glance">м</string>
+    <string id="NoData" scope="glance">нет данных</string>
+    <string id="Loading" scope="glance">Загружаю…</string>
+    <string id="PairRun" scope="glance">На компьютере выполните:</string>
+    <string id="PairShort" scope="glance">код</string>
+    <string id="ForClaudeCode" scope="glance">для Claude Code</string>
+    <string id="UnpairQ" scope="glance">Отвязать часы?</string>
+    <string id="NoConnection" scope="glance">нет связи</string>
+    <string id="OpenToPair" scope="glance">откройте для привязки</string>
+</strings>
