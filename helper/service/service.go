@@ -141,9 +141,16 @@ WantedBy=default.target
 `
 }
 
-// windowsRunValue is the Run-key command: conhost --headless hides the console window.
-func windowsRunValue(exe, claudeConfigDir string) string {
-	v := `conhost.exe --headless "` + exe + `" run`
+// backgroundExe is the GUI-subsystem build that ships next to ailimits.exe. It
+// has no console, so no window, and nothing can close it under the helper:
+// `conhost --headless` used to, now and then (exit 0xC000013A).
+func backgroundExe(exe string) string {
+	return exe[:strings.LastIndexAny(exe, `\/`)+1] + "ailimitsw.exe"
+}
+
+// windowsRunValue is the Run-key command; bg is the background exe.
+func windowsRunValue(bg, claudeConfigDir string) string {
+	v := `"` + bg + `" run`
 	if claudeConfigDir != "" {
 		v += ` --claude-config-dir "` + claudeConfigDir + `"`
 	}
@@ -238,11 +245,11 @@ type proc struct {
 	name string
 }
 
-// helpersToStop picks every ailimits.exe except this process.
+// helpersToStop picks every ailimits.exe and ailimitsw.exe except this process.
 func helpersToStop(procs []proc, self int) []int {
 	var pids []int
 	for _, p := range procs {
-		if p.pid != self && strings.EqualFold(p.name, "ailimits.exe") {
+		if p.pid != self && (strings.EqualFold(p.name, "ailimits.exe") || strings.EqualFold(p.name, "ailimitsw.exe")) {
 			pids = append(pids, p.pid)
 		}
 	}
@@ -259,12 +266,39 @@ func stopHelpers() {
 	}
 }
 
+// ErrNotRunningYet: autostart is set, but the helper started now did not stay
+// running. It starts at the next sign-in.
+var ErrNotRunningYet = errors.New("the helper did not stay running")
+
+// helperRunning reports whether another ailimits.exe runs; true when unknown.
+func helperRunning() bool {
+	procs, err := listProcs()
+	return err != nil || len(helpersToStop(procs, getpid())) > 0
+}
+
+// fileExists is replaced in tests.
+var fileExists = func(p string) bool { _, err := os.Stat(p); return err == nil }
+
 func windowsInstall(exe, claudeConfigDir string) error {
-	if err := setRunValue(windowsRunValue(exe, claudeConfigDir)); err != nil {
+	bg := backgroundExe(exe)
+	if !fileExists(bg) {
+		return errors.New("ailimitsw.exe is missing next to ailimits.exe: unzip the whole archive into one folder")
+	}
+	if err := setRunValue(windowsRunValue(bg, claudeConfigDir)); err != nil {
 		return err
 	}
 	stopHelpers() // no second helper after a reinstall
-	return startDetached("conhost.exe", append([]string{"--headless", exe}, runArgs(claudeConfigDir)...)...)
+	// Safety net: check that the started helper stays running, and retry.
+	for try := 0; try < 3; try++ {
+		if err := startDetached(bg, runArgs(claudeConfigDir)...); err != nil {
+			return err
+		}
+		sleep(2 * time.Second)
+		if helperRunning() {
+			return nil
+		}
+	}
+	return ErrNotRunningYet
 }
 
 func windowsUninstall() {

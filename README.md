@@ -32,7 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/SecondBrainProd/ai-limits/main/inst
 
 The script installs `ailimits` into `~/.local/bin` and checks the download against `SHA256SUMS`.
 
-**Windows:** download `ailimits_windows_amd64.zip` from [Releases](https://github.com/SecondBrainProd/ai-limits/releases/latest) and unzip `ailimits.exe` into a folder of your choice. The program is not signed yet, so Windows may show “Windows protected your PC”: click **More info**, then **Run anyway**.
+**Windows:** download `ailimits_windows_amd64.zip` from [Releases](https://github.com/SecondBrainProd/ai-limits/releases/latest) and unzip the whole archive into a folder of your choice: `ailimits.exe` is the command, `ailimitsw.exe` runs in the background without a window. The program is not signed yet, so Windows may show “Windows protected your PC”: click **More info**, then **Run anyway**.
 
 **Watch:** install **AI Limits** from the Connect IQ Store.
 

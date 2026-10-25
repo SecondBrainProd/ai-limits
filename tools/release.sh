@@ -28,6 +28,9 @@ for t in $TARGETS; do
     echo "build $os/$arch"
     CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "-s -w -X main.version=$V" -o "$d/$exe" ./helper/cmd/ailimits
     [ "$os" = darwin ] && sign_darwin "$d/$exe"
+    # Windows background helper: GUI subsystem, so it runs without a console window.
+    [ "$os" = windows ] && CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath \
+        -ldflags "-s -w -H windowsgui -X main.version=$V" -o "$d/ailimitsw.exe" ./helper/cmd/ailimits
     cp LICENSE README.md "$d/" 2>/dev/null || cp LICENSE "$d/"
     if [ "$os" = windows ]; then
         (cd "$d" && zip -q -X "$OUT/ailimits_${V}_${os}_${arch}.zip" ./*)

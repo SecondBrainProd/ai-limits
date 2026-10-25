@@ -59,8 +59,8 @@ func TestFilesUnsupported(t *testing.T) {
 }
 
 func TestRunValue(t *testing.T) {
-	got := windowsRunValue(`C:\Program Files\AI Limits\ailimits.exe`, "")
-	want := `conhost.exe --headless "C:\Program Files\AI Limits\ailimits.exe" run`
+	got := windowsRunValue(`C:\Program Files\AI Limits\ailimitsw.exe`, "")
+	want := `"C:\Program Files\AI Limits\ailimitsw.exe" run`
 	if got != want {
 		t.Fatalf("\n got %q\nwant %q", got, want)
 	}
@@ -129,8 +129,8 @@ func TestRunCmdKeepsFirstStderrLine(t *testing.T) {
 }
 
 func TestHelpersToStopSkipsSelfAndOtherPrograms(t *testing.T) {
-	procs := []proc{{1, "ailimits.exe"}, {2, "AILimits.EXE"}, {77, "ailimits.exe"}, {3, "conhost.exe"}}
-	if got := helpersToStop(procs, 77); !reflect.DeepEqual(got, []int{1, 2}) {
+	procs := []proc{{1, "ailimits.exe"}, {2, "AILimits.EXE"}, {77, "ailimits.exe"}, {3, "conhost.exe"}, {4, "ailimitsw.exe"}}
+	if got := helpersToStop(procs, 77); !reflect.DeepEqual(got, []int{1, 2, 4}) {
 		t.Fatal(got)
 	}
 }
@@ -141,8 +141,11 @@ func TestHelpersToStopSkipsSelfAndOtherPrograms(t *testing.T) {
 func windowsFakes(t *testing.T) *[]string {
 	oldRun, oldStart, oldPid := runCmd, startDetached, getpid
 	oldSet, oldDel, oldList, oldKill := setRunValue, deleteRunValue, listProcs, killPid
+	oldSleep, oldExists := sleep, fileExists
+	sleep = func(time.Duration) {}
+	fileExists = func(string) bool { return true }
 	t.Cleanup(func() {
-		runCmd, startDetached, getpid = oldRun, oldStart, oldPid
+		runCmd, startDetached, getpid, sleep, fileExists = oldRun, oldStart, oldPid, oldSleep, oldExists
 		setRunValue, deleteRunValue, listProcs, killPid = oldSet, oldDel, oldList, oldKill
 	})
 	var seq []string
@@ -168,9 +171,9 @@ func TestWindowsInstallOrder(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{
-		`set conhost.exe --headless "C:\a b\ailimits.exe" run`,
+		`set "C:\a b\ailimitsw.exe" run`,
 		"kill 5", // a failed kill is ignored
-		`start conhost.exe --headless|C:\a b\ailimits.exe|run`,
+		`start C:\a b\ailimitsw.exe run`,
 	}
 	if !reflect.DeepEqual(*seq, want) {
 		t.Fatalf("\n got %q\nwant %q", *seq, want)
@@ -233,8 +236,8 @@ func TestFilesCarryClaudeConfigDir(t *testing.T) {
 }
 
 func TestWindowsRunValueCarriesConfigDir(t *testing.T) {
-	got := windowsRunValue(`C:\ai\ailimits.exe`, `C:\Users\me\.claude work`)
-	want := `conhost.exe --headless "C:\ai\ailimits.exe" run --claude-config-dir "C:\Users\me\.claude work"`
+	got := windowsRunValue(`C:\ai\ailimitsw.exe`, `C:\Users\me\.claude work`)
+	want := `"C:\ai\ailimitsw.exe" run --claude-config-dir "C:\Users\me\.claude work"`
 	if got != want {
 		t.Fatalf("\n got %q\nwant %q", got, want)
 	}
@@ -283,5 +286,77 @@ func TestStartOutsideReportsSecondFailure(t *testing.T) {
 	err := startOutside(func(uint32) error { return errors.New("no conhost") })
 	if err == nil || err.Error() != "no conhost" {
 		t.Fatalf("err %v", err)
+	}
+}
+
+// On a fresh download the helper started by install-service sometimes does not
+// stay running (seen on Windows 11 with Defender). Install checks and retries.
+func TestWindowsInstallRetriesUntilHelperRuns(t *testing.T) {
+	seq := windowsFakes(t)
+	sleep = func(time.Duration) {}
+	calls := 0
+	listProcs = func() ([]proc, error) {
+		calls++
+		if calls < 3 { // stopHelpers, then the first check: only this process
+			return []proc{{77, "ailimits.exe"}}, nil
+		}
+		return []proc{{77, "ailimits.exe"}, {9, "ailimits.exe"}}, nil
+	}
+	if err := windowsInstall(`C:\ai\ailimits.exe`, ""); err != nil {
+		t.Fatal(err)
+	}
+	starts := 0
+	for _, s := range *seq {
+		if strings.HasPrefix(s, "start ") {
+			starts++
+		}
+	}
+	if starts != 2 {
+		t.Fatalf("want 2 starts, got %q", *seq)
+	}
+}
+
+func TestWindowsInstallReportsHelperNotRunning(t *testing.T) {
+	seq := windowsFakes(t)
+	sleep = func(time.Duration) {}
+	listProcs = func() ([]proc, error) { return []proc{{77, "ailimits.exe"}}, nil }
+	err := windowsInstall(`C:\ai\ailimits.exe`, "")
+	if !errors.Is(err, ErrNotRunningYet) {
+		t.Fatalf("err %v", err)
+	}
+	starts := 0
+	for _, s := range *seq {
+		if strings.HasPrefix(s, "start ") {
+			starts++
+		}
+	}
+	if starts != 3 || !strings.HasPrefix((*seq)[0], "set ") {
+		t.Fatalf("want the Run value and 3 starts, got %q", *seq)
+	}
+}
+
+// The background helper is the GUI-subsystem build next to ailimits.exe: no
+// console, so no window and no conhost that can close it (exit 0xC000013A).
+func TestBackgroundExe(t *testing.T) {
+	for in, want := range map[string]string{
+		`C:\a b\ailimits.exe`: `C:\a b\ailimitsw.exe`,
+		`C:/ai/AILIMITS.EXE`:  `C:/ai/ailimitsw.exe`,
+		`ailimits.exe`:        `ailimitsw.exe`,
+	} {
+		if got := backgroundExe(in); got != want {
+			t.Errorf("%s -> %s, want %s", in, got, want)
+		}
+	}
+}
+
+func TestWindowsInstallNeedsBackgroundExe(t *testing.T) {
+	seq := windowsFakes(t)
+	fileExists = func(string) bool { return false }
+	err := windowsInstall(`C:\ai\ailimits.exe`, "")
+	if err == nil || !strings.Contains(err.Error(), "ailimitsw.exe") {
+		t.Fatalf("err %v", err)
+	}
+	if len(*seq) != 0 {
+		t.Fatalf("nothing may change: %q", *seq)
 	}
 }
