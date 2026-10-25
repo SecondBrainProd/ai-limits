@@ -2,11 +2,11 @@
 
 Your Claude Code usage limits on a Garmin watch: the 5-hour session, the week and the per-model week, with the time until each one resets.
 
-![AI Limits on a fēnix 8: the full screen and the pairing screen](docs/img/watch.png)
+![AI Limits on a fēnix 6X in carbon gray DLC: the full screen and the pairing screen](docs/img/watch.png)
 
 In the widget loop, the glance shows all three limits at once:
 
-![The AI Limits glance on a fēnix 8](docs/img/glance.png)
+![The AI Limits glance in the widget loop of a fēnix 6X](docs/img/glance.png)
 
 > Unofficial. Uses your local Claude Code token only to read your usage limits; the token never leaves your computer. May stop working if Anthropic changes its API. Not affiliated with Anthropic.
 

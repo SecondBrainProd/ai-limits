@@ -19,7 +19,7 @@ import (
 const (
 	label    = "ru.second-brain.ailimits"
 	unitName = "ailimits.service"
-	runKey   = `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
+	runKey   = `Software\Microsoft\Windows\CurrentVersion\Run` // under HKEY_CURRENT_USER
 	runValue = "AILimits"
 )
 
@@ -150,14 +150,6 @@ func windowsRunValue(exe, claudeConfigDir string) string {
 	return v
 }
 
-func regAddArgs(exe, claudeConfigDir string) []string {
-	return []string{"add", runKey, "/v", runValue, "/t", "REG_SZ", "/d", windowsRunValue(exe, claudeConfigDir), "/f"}
-}
-
-func regDeleteArgs() []string {
-	return []string{"delete", runKey, "/v", runValue, "/f"}
-}
-
 // StablePath returns a path that survives upgrades. Homebrew installs the real
 // binary under <prefix>/Cellar/ailimits/<version>/, which `brew upgrade`
 // deletes; <prefix>/bin/ailimits always points at the current version.
@@ -191,13 +183,39 @@ var runCmd = func(name string, args ...string) error {
 	return nil
 }
 
+// Windows process creation flags (winbase.h).
+const (
+	detachedProcess        = 0x00000008
+	createNewProcessGroup  = 0x00000200
+	createBreakawayFromJob = 0x01000000
+)
+
+// startOutside starts the helper so it outlives the terminal or ssh session
+// that ran install-service: no console of its own to be closed with the window,
+// and outside the session's job object. A job that forbids breakaway refuses
+// the first try; the second one still detaches from the console.
+func startOutside(launch func(flags uint32) error) error {
+	flags := uint32(detachedProcess | createNewProcessGroup)
+	if err := launch(flags | createBreakawayFromJob); err == nil {
+		return nil
+	}
+	return launch(flags)
+}
+
 // startDetached is replaced in tests.
 var startDetached = func(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	if err := cmd.Start(); err != nil {
+	err := startOutside(func(flags uint32) error {
+		cmd := exec.Command(name, args...)
+		cmd.SysProcAttr = detachAttr(flags)
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		go cmd.Wait()
+		return nil
+	})
+	if err != nil {
 		return fmt.Errorf("cannot start %s: %v", name, err)
 	}
-	go cmd.Wait()
 	return nil
 }
 
@@ -205,20 +223,53 @@ var sleep = time.Sleep
 
 var getpid = os.Getpid
 
-// taskkillArgs stops every ailimits.exe except this process (taskkill only
-// spares itself, not its parent).
-func taskkillArgs(pid int) []string {
-	return []string{"/F", "/IM", "ailimits.exe", "/FI", "PID ne " + strconv.Itoa(pid)}
+// The Run key and the running helpers are handled through Windows APIs, not
+// reg.exe and taskkill: Defender flags `reg.exe add …\Run` started by an
+// unsigned program as Trojan:Win32/Commando.A!ml. Replaced in tests.
+var (
+	setRunValue    = setRunValueOS
+	deleteRunValue = deleteRunValueOS
+	listProcs      = listProcsOS
+	killPid        = killPidOS
+)
+
+type proc struct {
+	pid  int
+	name string
 }
 
-func stopHelpers() { _ = runCmd("taskkill", taskkillArgs(getpid())...) }
+// helpersToStop picks every ailimits.exe except this process.
+func helpersToStop(procs []proc, self int) []int {
+	var pids []int
+	for _, p := range procs {
+		if p.pid != self && strings.EqualFold(p.name, "ailimits.exe") {
+			pids = append(pids, p.pid)
+		}
+	}
+	return pids
+}
+
+func stopHelpers() {
+	procs, err := listProcs()
+	if err != nil {
+		return
+	}
+	for _, pid := range helpersToStop(procs, getpid()) {
+		_ = killPid(pid) // already gone is fine
+	}
+}
 
 func windowsInstall(exe, claudeConfigDir string) error {
-	if err := runCmd("reg", regAddArgs(exe, claudeConfigDir)...); err != nil {
+	if err := setRunValue(windowsRunValue(exe, claudeConfigDir)); err != nil {
 		return err
 	}
 	stopHelpers() // no second helper after a reinstall
 	return startDetached("conhost.exe", append([]string{"--headless", exe}, runArgs(claudeConfigDir)...)...)
+}
+
+func windowsUninstall() {
+	_ = deleteRunValue() // fine if the value is not there
+	stopHelpers()
 }
 
 // Install writes the autostart entry and starts the helper now.
@@ -280,8 +331,7 @@ func Uninstall() error {
 	case "linux":
 		_ = runCmd("systemctl", "--user", "disable", "--now", unitName)
 	case "windows":
-		_ = runCmd("reg", regDeleteArgs()...) // fine if the value is not there
-		stopHelpers()
+		windowsUninstall()
 	}
 	for path := range files {
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {

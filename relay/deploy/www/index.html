@@ -3,44 +3,157 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Limits</title>
-<meta name="description" content="Your Claude Code usage limits on a Garmin watch.">
-<style>
-  :root { --bg:#f2f2f7; --ink:#1c1c1e; --muted:#6e6e73; --card:#fff; --accent:#b4532f; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#000; --ink:#f2f2f7; --muted:#a1a1a6; --card:#1c1c1e; --accent:#e8946f; } }
-  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  main { max-width:640px; margin:0 auto; padding:48px 16px 64px; }
-  h1 { font-size:34px; margin:0 0 4px; } h2 { font-size:20px; margin:32px 0 8px; }
-  .sub { color:var(--muted); margin:0 0 24px; }
-  .card { background:var(--card); border-radius:16px; padding:20px 20px 8px; margin:16px 0; }
-  code { background:rgba(127,127,127,.15); padding:1px 5px; border-radius:5px; }
-  a { color:var(--accent); }
-  small { color:var(--muted); }
-</style>
+<title>AI Limits — Claude Code limits on a Garmin watch</title>
+<meta name="description" content="A free, open-source Connect IQ widget: your Claude Code 5-hour session, weekly and per-model limits on a Garmin fēnix or MARQ.">
+<link rel="alternate" hreflang="en" href="https://ailimits.second-brain.ru/">
+<link rel="alternate" hreflang="ru" href="https://ailimits.second-brain.ru/ru/">
+<link rel="icon" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="/"><img src="/icon.png" alt="">AI Limits</a>
+    <nav class="tabs" aria-label="Language">
+      <a href="/" aria-current="page" lang="en">EN</a>
+      <a href="/ru/" lang="ru">RU</a>
+    </nav>
+  </div>
+</header>
+
 <main>
-  <h1>AI Limits</h1>
-  <p class="sub">Your Claude Code usage limits — the 5-hour window, the week and the per-model week — on your Garmin watch.</p>
-
-  <div class="card">
-    <h2>Get started</h2>
-    <p>1. Install the <b>AI Limits</b> widget on your watch from the Connect IQ Store.</p>
-    <p>2. Install the helper on the computer where you use Claude Code:<br>
-      <code>brew install SecondBrainProd/tap/ailimits</code><br>
-      or <code>curl -fsSL https://raw.githubusercontent.com/SecondBrainProd/ai-limits/main/install.sh | sh</code><br>
-      Windows: <a href="https://github.com/SecondBrainProd/ai-limits/releases/latest">download the zip</a>.</p>
-    <p>3. Open AI Limits on the watch, then run <code>ailimits pair CODE</code> and <code>ailimits install-service</code>.</p>
-    <p>Source code and details: <a href="https://github.com/SecondBrainProd/ai-limits">github.com/SecondBrainProd/ai-limits</a>.</p>
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">Connect IQ widget · fēnix · MARQ</p>
+      <h1>Claude Code limits on your wrist</h1>
+      <p class="lead">The 5-hour session, the week and the per-model week, with the time until each one resets. Glance at your watch instead of opening a terminal.</p>
+      <div class="actions">
+        <!-- Connect IQ Store: replace with the store link once the review passes -->
+        <span class="btn" aria-disabled="true">Connect IQ Store — soon</span>
+        <a class="btn btn-primary" href="https://github.com/SecondBrainProd/ai-limits">Source on GitHub</a>
+      </div>
+      <div class="metrics">
+        <div class="metric"><b>3</b><span>limits</span></div>
+        <div class="metric"><b>44</b><span>watch models</span></div>
+        <div class="metric"><b>$0</b><span>free, MIT</span></div>
+      </div>
+    </div>
+    <img src="/watch.png" width="430" height="600" alt="AI Limits on a fēnix 6X: session 27%, week 74%, Fable 91%, with reset times">
   </div>
+</section>
 
-  <div class="card">
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Setup</p>
+    <h2>Three steps, about a minute</h2>
+    <div class="register">
+      <div class="row">
+        <div class="num">01</div>
+        <div>
+          <h3>Install the widget</h3>
+          <p>Find <b>AI Limits</b> in the Connect IQ Store and add it to your watch.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="num">02</div>
+        <div>
+          <h3>Install the helper on your computer</h3>
+          <p>On the computer where you use Claude Code. macOS or Linux with Homebrew:</p>
+          <pre><code>brew install SecondBrainProd/tap/ailimits</code></pre>
+          <p>Without Homebrew:</p>
+          <pre><code>curl -fsSL https://raw.githubusercontent.com/SecondBrainProd/ai-limits/main/install.sh | sh</code></pre>
+          <p>Windows: <a href="https://github.com/SecondBrainProd/ai-limits/releases/latest">download the zip</a> and unpack <code>ailimits.exe</code>. It is not signed yet, so Windows may ask you to confirm: <b>More info</b>, then <b>Run anyway</b>.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="num">03</div>
+        <div>
+          <h3>Pair</h3>
+          <p>Open AI Limits on the watch: it shows a six-character code. On the computer, run:</p>
+          <pre><code>ailimits pair CODE
+ailimits install-service</code></pre>
+          <p>The second command keeps the limits updating after you log in.</p>
+        </div>
+      </div>
+    </div>
+    <p class="note muted">You need Claude Code signed in with a Pro or Max subscription, and a phone with Garmin Connect nearby: the watch reaches the internet through it.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">How it works</p>
+    <h2>Your token stays on your computer</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>Helper</h3>
+        <p>Reads your Claude Code sign-in locally and asks Anthropic for your usage every 5 minutes, exactly as Claude Code does. It never refreshes or rewrites the token.</p>
+      </div>
+      <div class="card">
+        <h3>Relay</h3>
+        <p>Receives only the numbers: percentages, reset times and model labels. It keeps the latest snapshot for each helper and nothing else.</p>
+      </div>
+      <div class="card">
+        <h3>Watch</h3>
+        <p>Fetches the snapshot every 5 minutes through your phone and right away when you open the widget. A window that resets while your computer is off drops to 0% on its own.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq">
+  <div class="wrap">
+    <p class="eyebrow">Questions</p>
+    <h2>Before you install</h2>
+    <details>
+      <summary>Is this an official Anthropic app?</summary>
+      <p>No. AI Limits is an independent open-source project. It reads the same usage numbers that Claude Code itself reads, through an endpoint Anthropic has not documented, so it may stop working if Anthropic changes its API.</p>
+    </details>
+    <details>
+      <summary>Which watches are supported?</summary>
+      <p>fēnix 5 to 9 with their S, X and Plus versions, fēnix E, fēnix Chronos, and MARQ, MARQ 2 and MARQ 3: 44 models in total. Connect IQ 3.1 or newer is required, so fēnix 3 is not supported.</p>
+    </details>
+    <details>
+      <summary>Does it drain the battery?</summary>
+      <p>The widget wakes up in the background once every 5 minutes, the minimum Connect IQ allows, and makes one small request through your phone.</p>
+    </details>
+    <details>
+      <summary>What if my computer is off?</summary>
+      <p>The watch keeps the last snapshot and counts the reset times down on its own. Data older than 15 minutes turns grey, and the full screen shows when it was last updated.</p>
+    </details>
+    <details>
+      <summary>How do I disconnect?</summary>
+      <p>Run <code>ailimits unpair</code>: the relay forgets this computer, and the watch shows a new code. <code>ailimits uninstall-service</code> removes the autostart.</p>
+    </details>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="wrap privacy">
+    <p class="eyebrow">Privacy policy · updated 25 October 2026</p>
     <h2>Privacy</h2>
-    <p>A small helper on your computer reads your Claude Code sign-in <b>locally</b>, asks Anthropic for your usage limits, and sends only the numbers here: percentages, reset times and model labels. Your Claude token is sent only to Anthropic, exactly as Claude Code itself does, and never to this relay.</p>
-    <p>This relay keeps only the latest snapshot of those numbers per helper, plus random identifiers that pair a watch with a helper. No names, no e-mail, no account data. IP addresses are used in memory for about a minute to rate-limit requests. There is no access log; if the relay is briefly unavailable, the web server may record an error line that includes the client's IP address. Unpaired watches are deleted after a day; a helper that stays silent for 30 days is deleted together with its snapshot.</p>
+    <p>A small helper on your computer reads your Claude Code sign-in <b>locally</b>, asks Anthropic for your usage limits, and sends only the numbers to this relay: percentages, reset times and model labels. Your Claude token is sent only to Anthropic, exactly as Claude Code itself does, and never to this relay.</p>
+    <h3>What the relay keeps</h3>
+    <p>The latest snapshot of those numbers for each helper, plus random identifiers that pair a watch with a helper. Secrets are stored as SHA-256 hashes. No names, no e-mail, no account data.</p>
+    <h3>IP addresses</h3>
+    <p>IP addresses are used in memory for about a minute to rate-limit requests. There is no access log. If the relay is briefly unavailable, the web server may record an error line that includes the client's IP address.</p>
+    <h3>How long</h3>
+    <p>Unpaired watches are deleted after a day. A helper that stays silent for 30 days is deleted together with its snapshot. <code>ailimits unpair</code> deletes it at once.</p>
+    <h3>Contact</h3>
+    <p><a href="mailto:info@second-brain.ru">info@second-brain.ru</a> · <a href="https://github.com/SecondBrainProd/ai-limits/issues">GitHub issues</a></p>
   </div>
-
-  <p><small>Unofficial. Not affiliated with Anthropic. Claude is a trademark of Anthropic. May stop working if Anthropic changes its API.</small></p>
+</section>
 </main>
+
+<footer>
+  <div class="wrap">
+    <p>Unofficial. Not affiliated with Anthropic. Claude is a trademark of Anthropic. May stop working if Anthropic changes its API.</p>
+    <p>© 2026 Second Brain Production · MIT License</p>
+  </div>
+</footer>
 </body>
 </html>

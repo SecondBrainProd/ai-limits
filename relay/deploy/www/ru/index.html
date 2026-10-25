@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Limits — лимиты Claude Code на часах Garmin</title>
+<meta name="description" content="Бесплатный виджет Connect IQ с открытым кодом: пятичасовая сессия, недельный лимит и лимит модели Claude Code на часах Garmin fēnix и MARQ.">
+<link rel="alternate" hreflang="en" href="https://ailimits.second-brain.ru/">
+<link rel="alternate" hreflang="ru" href="https://ailimits.second-brain.ru/ru/">
+<link rel="icon" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="/ru/"><img src="/icon.png" alt="">AI Limits</a>
+    <nav class="tabs" aria-label="Язык">
+      <a href="/" lang="en">EN</a>
+      <a href="/ru/" aria-current="page" lang="ru">RU</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">Виджет Connect IQ · fēnix · MARQ</p>
+      <h1>Лимиты Claude Code на&nbsp;запястье</h1>
+      <p class="lead">Пятичасовая сессия, неделя и&nbsp;неделя по&nbsp;модели — и&nbsp;сколько осталось до&nbsp;сброса каждого лимита. Достаточно взглянуть на&nbsp;часы, терминал открывать не&nbsp;нужно.</p>
+      <div class="actions">
+        <!-- Connect IQ Store: заменить ссылкой на магазин после проверки -->
+        <span class="btn" aria-disabled="true">Connect IQ Store — скоро</span>
+        <a class="btn btn-primary" href="https://github.com/SecondBrainProd/ai-limits">Код на GitHub</a>
+      </div>
+      <div class="metrics">
+        <div class="metric"><b>3</b><span>лимита</span></div>
+        <div class="metric"><b>44</b><span>модели часов</span></div>
+        <div class="metric"><b>0&nbsp;₽</b><span>бесплатно, MIT</span></div>
+      </div>
+    </div>
+    <img src="/watch.png" width="430" height="600" alt="AI Limits на fēnix 6X: сессия 27%, неделя 74%, Fable 91% и время до сброса">
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Настройка</p>
+    <h2>Три шага, около минуты</h2>
+    <div class="register">
+      <div class="row">
+        <div class="num">01</div>
+        <div>
+          <h3>Поставьте виджет</h3>
+          <p>Найдите <b>AI Limits</b> в Connect IQ Store и&nbsp;добавьте на&nbsp;часы.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="num">02</div>
+        <div>
+          <h3>Поставьте помощника на&nbsp;компьютер</h3>
+          <p>На тот компьютер, где вы работаете в&nbsp;Claude Code. macOS или Linux с&nbsp;Homebrew:</p>
+          <pre><code>brew install SecondBrainProd/tap/ailimits</code></pre>
+          <p>Без Homebrew:</p>
+          <pre><code>curl -fsSL https://raw.githubusercontent.com/SecondBrainProd/ai-limits/main/install.sh | sh</code></pre>
+          <p>Windows: <a href="https://github.com/SecondBrainProd/ai-limits/releases/latest">скачайте архив</a> и&nbsp;распакуйте <code>ailimits.exe</code>. Программа пока не&nbsp;подписана, поэтому Windows может попросить подтверждение: «Подробнее», затем «Выполнить в&nbsp;любом случае».</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="num">03</div>
+        <div>
+          <h3>Привяжите часы</h3>
+          <p>Откройте AI Limits на&nbsp;часах — там появится код из&nbsp;шести букв. На&nbsp;компьютере выполните:</p>
+          <pre><code>ailimits pair КОД
+ailimits install-service</code></pre>
+          <p>Вторая команда включает автозапуск: лимиты обновляются и&nbsp;после перезагрузки.</p>
+        </div>
+      </div>
+    </div>
+    <p class="note muted">Нужен Claude Code с&nbsp;подпиской Pro или Max и&nbsp;телефон с&nbsp;Garmin Connect рядом: часы выходят в&nbsp;интернет через него.</p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="eyebrow">Как устроено</p>
+    <h2>Токен не&nbsp;покидает ваш компьютер</h2>
+    <div class="cols">
+      <div class="card">
+        <h3>Помощник</h3>
+        <p>Читает вход в&nbsp;Claude Code на&nbsp;вашем компьютере и&nbsp;раз в&nbsp;5&nbsp;минут спрашивает у&nbsp;Anthropic лимиты — так&nbsp;же, как сам Claude Code. Токен он не&nbsp;обновляет и&nbsp;не&nbsp;перезаписывает.</p>
+      </div>
+      <div class="card">
+        <h3>Посредник</h3>
+        <p>Получает только числа: проценты, время сброса и&nbsp;названия моделей. Хранит последний снимок для каждого помощника и&nbsp;больше ничего.</p>
+      </div>
+      <div class="card">
+        <h3>Часы</h3>
+        <p>Забирают снимок через телефон раз в&nbsp;5&nbsp;минут и&nbsp;сразу при открытии виджета. Если лимит сбросился, пока компьютер выключен, часы сами покажут 0%.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq">
+  <div class="wrap">
+    <p class="eyebrow">Вопросы</p>
+    <h2>Перед установкой</h2>
+    <details>
+      <summary>Это официальное приложение Anthropic?</summary>
+      <p>Нет. AI Limits — независимый проект с&nbsp;открытым кодом. Он читает те&nbsp;же данные о&nbsp;лимитах, что и&nbsp;сам Claude Code, через недокументированный адрес Anthropic. Если Anthropic изменит API, виджет может перестать работать.</p>
+    </details>
+    <details>
+      <summary>Какие часы поддерживаются?</summary>
+      <p>fēnix с&nbsp;5-го по&nbsp;9-й, включая версии S, X и&nbsp;Plus, fēnix E, fēnix Chronos, а&nbsp;также MARQ, MARQ 2 и&nbsp;MARQ 3 — всего 44 модели. Нужен Connect IQ 3.1 или новее, поэтому fēnix 3 не&nbsp;поддерживается.</p>
+    </details>
+    <details>
+      <summary>Сильно ли садится батарея?</summary>
+      <p>Виджет просыпается в&nbsp;фоне раз в&nbsp;5&nbsp;минут — чаще Connect IQ не&nbsp;разрешает — и&nbsp;делает один небольшой запрос через телефон.</p>
+    </details>
+    <details>
+      <summary>Что, если компьютер выключен?</summary>
+      <p>Часы хранят последний снимок и&nbsp;сами отсчитывают время до&nbsp;сброса. Данные старше 15&nbsp;минут становятся серыми, а&nbsp;на&nbsp;полном экране видно, когда было последнее обновление.</p>
+    </details>
+    <details>
+      <summary>Как отключиться?</summary>
+      <p>Выполните <code>ailimits unpair</code>: посредник забудет этот компьютер, а&nbsp;часы покажут новый код. <code>ailimits uninstall-service</code> убирает автозапуск.</p>
+    </details>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="wrap privacy">
+    <p class="eyebrow">Политика конфиденциальности · обновлено 25&nbsp;октября 2026</p>
+    <h2>Приватность</h2>
+    <p>Небольшой помощник на&nbsp;вашем компьютере читает вход в&nbsp;Claude Code <b>локально</b>, запрашивает у&nbsp;Anthropic лимиты и&nbsp;отправляет этому посреднику только числа: проценты, время сброса и&nbsp;названия моделей. Токен Claude уходит только в&nbsp;Anthropic — так&nbsp;же, как у&nbsp;самого Claude Code, — и&nbsp;никогда не&nbsp;попадает к&nbsp;посреднику.</p>
+    <h3>Что хранит посредник</h3>
+    <p>Последний снимок этих чисел для каждого помощника и&nbsp;случайные идентификаторы, которые связывают часы с&nbsp;помощником. Секреты хранятся в&nbsp;виде хешей SHA-256. Ни&nbsp;имён, ни&nbsp;почты, ни&nbsp;данных аккаунта.</p>
+    <h3>IP-адреса</h3>
+    <p>IP-адреса держатся в&nbsp;памяти около минуты, чтобы ограничивать частоту запросов. Журнала обращений нет. Если посредник ненадолго недоступен, веб-сервер может записать строку об&nbsp;ошибке с&nbsp;IP-адресом клиента.</p>
+    <h3>Сроки</h3>
+    <p>Непривязанные часы удаляются через сутки. Помощник, который молчит 30&nbsp;дней, удаляется вместе со&nbsp;снимком. <code>ailimits unpair</code> удаляет его сразу.</p>
+    <h3>Связь</h3>
+    <p><a href="mailto:info@second-brain.ru">info@second-brain.ru</a> · <a href="https://github.com/SecondBrainProd/ai-limits/issues">задачи на&nbsp;GitHub</a></p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Неофициальное приложение, не&nbsp;связано с&nbsp;Anthropic. Claude — товарный знак Anthropic. Может перестать работать, если Anthropic изменит API.</p>
+    <p>© 2026 Second Brain Production · лицензия MIT</p>
+  </div>
+</footer>
+</body>
+</html>

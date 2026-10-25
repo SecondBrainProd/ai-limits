@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -57,17 +58,11 @@ func TestFilesUnsupported(t *testing.T) {
 	}
 }
 
-func TestRegArgs(t *testing.T) {
-	got := regAddArgs(`C:\Program Files\AI Limits\ailimits.exe`, "")
-	want := []string{"add", `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, "/v", "AILimits", "/t", "REG_SZ", "/d",
-		`conhost.exe --headless "C:\Program Files\AI Limits\ailimits.exe" run`, "/f"}
-	if !reflect.DeepEqual(got, want) {
+func TestRunValue(t *testing.T) {
+	got := windowsRunValue(`C:\Program Files\AI Limits\ailimits.exe`, "")
+	want := `conhost.exe --headless "C:\Program Files\AI Limits\ailimits.exe" run`
+	if got != want {
 		t.Fatalf("\n got %q\nwant %q", got, want)
-	}
-	del := regDeleteArgs()
-	wantDel := []string{"delete", `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, "/v", "AILimits", "/f"}
-	if !reflect.DeepEqual(del, wantDel) {
-		t.Fatal(del)
 	}
 }
 
@@ -133,37 +128,71 @@ func TestRunCmdKeepsFirstStderrLine(t *testing.T) {
 	}
 }
 
-func TestTaskkillExcludesSelf(t *testing.T) {
-	want := []string{"/F", "/IM", "ailimits.exe", "/FI", "PID ne 4242"}
-	if got := taskkillArgs(4242); !reflect.DeepEqual(got, want) {
+func TestHelpersToStopSkipsSelfAndOtherPrograms(t *testing.T) {
+	procs := []proc{{1, "ailimits.exe"}, {2, "AILimits.EXE"}, {77, "ailimits.exe"}, {3, "conhost.exe"}}
+	if got := helpersToStop(procs, 77); !reflect.DeepEqual(got, []int{1, 2}) {
 		t.Fatal(got)
 	}
 }
 
-func TestWindowsInstallOrder(t *testing.T) {
+// Windows Defender flags `reg.exe add …\Run` started by an unsigned program as
+// Trojan:Win32/Commando.A!ml and kills it; taskkill /F looks the same. Install
+// must use the registry and process APIs, not spawn those tools.
+func windowsFakes(t *testing.T) *[]string {
 	oldRun, oldStart, oldPid := runCmd, startDetached, getpid
-	defer func() { runCmd, startDetached, getpid = oldRun, oldStart, oldPid }()
-	getpid = func() int { return 77 }
+	oldSet, oldDel, oldList, oldKill := setRunValue, deleteRunValue, listProcs, killPid
+	t.Cleanup(func() {
+		runCmd, startDetached, getpid = oldRun, oldStart, oldPid
+		setRunValue, deleteRunValue, listProcs, killPid = oldSet, oldDel, oldList, oldKill
+	})
 	var seq []string
+	getpid = func() int { return 77 }
 	runCmd = func(name string, args ...string) error {
-		seq = append(seq, name+" "+strings.Join(args, "|"))
-		if name == "taskkill" {
-			return errors.New("not running") // must be ignored
-		}
+		seq = append(seq, "spawn "+name)
 		return nil
 	}
+	setRunValue = func(v string) error { seq = append(seq, "set "+v); return nil }
+	deleteRunValue = func() error { seq = append(seq, "delete"); return nil }
+	listProcs = func() ([]proc, error) { return []proc{{5, "ailimits.exe"}, {77, "ailimits.exe"}}, nil }
+	killPid = func(pid int) error { seq = append(seq, fmt.Sprintf("kill %d", pid)); return errors.New("gone") }
 	startDetached = func(name string, args ...string) error {
 		seq = append(seq, "start "+name+" "+strings.Join(args, "|"))
 		return nil
 	}
+	return &seq
+}
+
+func TestWindowsInstallOrder(t *testing.T) {
+	seq := windowsFakes(t)
 	if err := windowsInstall(`C:\a b\ailimits.exe`, ""); err != nil {
 		t.Fatal(err)
 	}
-	if len(seq) != 3 ||
-		!strings.HasPrefix(seq[0], "reg add|") ||
-		seq[1] != "taskkill /F|/IM|ailimits.exe|/FI|PID ne 77" ||
-		seq[2] != `start conhost.exe --headless|C:\a b\ailimits.exe|run` {
-		t.Fatal(seq)
+	want := []string{
+		`set conhost.exe --headless "C:\a b\ailimits.exe" run`,
+		"kill 5", // a failed kill is ignored
+		`start conhost.exe --headless|C:\a b\ailimits.exe|run`,
+	}
+	if !reflect.DeepEqual(*seq, want) {
+		t.Fatalf("\n got %q\nwant %q", *seq, want)
+	}
+}
+
+func TestWindowsInstallStopsWhenRunValueFails(t *testing.T) {
+	seq := windowsFakes(t)
+	setRunValue = func(string) error { return errors.New("cannot write the Run key: denied") }
+	if err := windowsInstall(`C:\ai\ailimits.exe`, ""); err == nil || !strings.Contains(err.Error(), "Run key") {
+		t.Fatalf("err %v", err)
+	}
+	if len(*seq) != 0 {
+		t.Fatalf("nothing may run after a failed write: %q", *seq)
+	}
+}
+
+func TestWindowsUninstallUsesAPIs(t *testing.T) {
+	seq := windowsFakes(t)
+	windowsUninstall()
+	if want := []string{"delete", "kill 5"}; !reflect.DeepEqual(*seq, want) {
+		t.Fatalf("\n got %q\nwant %q", *seq, want)
 	}
 }
 
@@ -204,10 +233,10 @@ func TestFilesCarryClaudeConfigDir(t *testing.T) {
 }
 
 func TestWindowsRunValueCarriesConfigDir(t *testing.T) {
-	got := regAddArgs(`C:\ai\ailimits.exe`, `C:\Users\me\.claude work`)
+	got := windowsRunValue(`C:\ai\ailimits.exe`, `C:\Users\me\.claude work`)
 	want := `conhost.exe --headless "C:\ai\ailimits.exe" run --claude-config-dir "C:\Users\me\.claude work"`
-	if got[7] != want {
-		t.Fatalf("\n got %q\nwant %q", got[7], want)
+	if got != want {
+		t.Fatalf("\n got %q\nwant %q", got, want)
 	}
 }
 
@@ -217,5 +246,42 @@ func TestSystemdEscapesDollar(t *testing.T) {
 		if !strings.Contains(b, "/home/me/$$bin/ailimits") {
 			t.Errorf("dollar not escaped:\n%s", b)
 		}
+	}
+}
+
+// The helper started by install-service must outlive the terminal (and the
+// ssh session) it was started from: detached from the console, outside the job.
+func TestStartOutsideBreaksAwayFromJob(t *testing.T) {
+	var got []uint32
+	err := startOutside(func(flags uint32) error { got = append(got, flags); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0] != 0x00000008|0x00000200|0x01000000 {
+		t.Fatalf("flags %#x", got)
+	}
+}
+
+func TestStartOutsideRetriesWhenJobForbidsBreakaway(t *testing.T) {
+	var got []uint32
+	err := startOutside(func(flags uint32) error {
+		got = append(got, flags)
+		if flags&0x01000000 != 0 {
+			return errors.New("Access is denied.")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[1] != 0x00000008|0x00000200 {
+		t.Fatalf("flags %#x", got)
+	}
+}
+
+func TestStartOutsideReportsSecondFailure(t *testing.T) {
+	err := startOutside(func(uint32) error { return errors.New("no conhost") })
+	if err == nil || err.Error() != "no conhost" {
+		t.Fatalf("err %v", err)
 	}
 }
