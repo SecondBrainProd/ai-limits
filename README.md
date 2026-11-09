@@ -34,7 +34,7 @@ The script installs `ailimits` into `~/.local/bin` and checks the download again
 
 **Windows:** download `ailimits_windows_amd64.zip` from [Releases](https://github.com/SecondBrainProd/ai-limits/releases/latest) and unzip the whole archive into a folder of your choice: `ailimits.exe` is the command, `ailimitsw.exe` runs in the background without a window. The program is not signed yet, so Windows may show “Windows protected your PC”: click **More info**, then **Run anyway**.
 
-**Watch:** install **AI Limits** from the Connect IQ Store.
+**Watch:** install **AI Limits** from the [Connect IQ Store](https://apps.garmin.com/en-US/apps/6864a963-33e2-4dc4-9535-747d03b56e01).
 
 ## Pair
 
