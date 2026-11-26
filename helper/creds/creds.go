@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -43,11 +44,35 @@ type Token struct {
 }
 
 // Source describes where to look for the token; fields are injectable for tests.
+//
+// On macOS the Keychain may hold more than one "Claude Code-credentials" item:
+// Claude Code keeps the live one under the login user's account name, while
+// other tools (for example `claude setup-token`) can leave a stale item under a
+// different account. Asking the Keychain without an account returns whichever
+// item comes first, which may be the dead one. So we ask for each account in
+// Accounts ("" means "any account", the old behaviour) and keep the token that
+// expires last.
 type Source struct {
 	GOOS        string
 	ConfigDir   string
-	RunSecurity func() ([]byte, error)
+	Accounts    []string
+	RunSecurity func(account string) ([]byte, error)
 	ReadFile    func(string) ([]byte, error)
+}
+
+// keychainAccounts lists the Keychain accounts to try, most specific first.
+func keychainAccounts() []string {
+	var accounts []string
+	name := os.Getenv("USER")
+	if name == "" {
+		if u, err := user.Current(); err == nil {
+			name = u.Username
+		}
+	}
+	if name != "" {
+		accounts = append(accounts, name)
+	}
+	return append(accounts, "")
 }
 
 // Default returns a Source for the current machine.
@@ -61,8 +86,13 @@ func Default() Source {
 	return Source{
 		GOOS:      runtime.GOOS,
 		ConfigDir: dir,
-		RunSecurity: func() ([]byte, error) {
-			return runWithTimeout("/usr/bin/security", "find-generic-password", "-s", "Claude Code-credentials", "-w")
+		Accounts:  keychainAccounts(),
+		RunSecurity: func(account string) ([]byte, error) {
+			args := []string{"find-generic-password", "-s", "Claude Code-credentials"}
+			if account != "" {
+				args = append(args, "-a", account)
+			}
+			return runWithTimeout("/usr/bin/security", append(args, "-w")...)
 		},
 		ReadFile: os.ReadFile,
 	}
@@ -70,25 +100,67 @@ func Default() Source {
 
 // Load reads the token. Any failure to find it yields ErrNotLoggedIn.
 func (s Source) Load() (Token, error) {
-	var raw []byte
-	var err error
 	if s.GOOS == "darwin" {
-		if s.RunSecurity == nil {
-			return Token{}, ErrNotLoggedIn
-		}
-		raw, err = s.RunSecurity()
-	} else {
-		if s.ReadFile == nil || s.ConfigDir == "" {
-			return Token{}, ErrNotLoggedIn
-		}
-		raw, err = s.ReadFile(filepath.Join(s.ConfigDir, ".credentials.json"))
+		return s.loadKeychain()
 	}
-	if errors.Is(err, ErrKeychainTimeout) {
-		return Token{}, ErrKeychainTimeout
+	if s.ReadFile == nil || s.ConfigDir == "" {
+		return Token{}, ErrNotLoggedIn
 	}
+	raw, err := s.ReadFile(filepath.Join(s.ConfigDir, ".credentials.json"))
 	if err != nil {
 		return Token{}, ErrNotLoggedIn
 	}
+	return parse(raw)
+}
+
+// loadKeychain tries every account and keeps the token that expires last.
+func (s Source) loadKeychain() (Token, error) {
+	if s.RunSecurity == nil {
+		return Token{}, ErrNotLoggedIn
+	}
+	accounts := s.Accounts
+	if len(accounts) == 0 {
+		accounts = []string{""}
+	}
+	var best Token
+	found := false
+	var lastErr error = ErrNotLoggedIn
+	for _, account := range accounts {
+		raw, err := s.RunSecurity(account)
+		if errors.Is(err, ErrKeychainTimeout) {
+			// A locked keychain will not answer the next query either.
+			return Token{}, ErrKeychainTimeout
+		}
+		if err != nil {
+			continue
+		}
+		tok, err := parse(raw)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if !found || laterExpiry(tok, best) {
+			best, found = tok, true
+		}
+	}
+	if !found {
+		return Token{}, lastErr
+	}
+	return best, nil
+}
+
+// laterExpiry reports whether a expires after b; a zero expiry never expires.
+func laterExpiry(a, b Token) bool {
+	if b.ExpiresAt.IsZero() {
+		return false
+	}
+	if a.ExpiresAt.IsZero() {
+		return true
+	}
+	return a.ExpiresAt.After(b.ExpiresAt)
+}
+
+func parse(raw []byte) (Token, error) {
 	var doc struct {
 		OAuth struct {
 			AccessToken string `json:"accessToken"`

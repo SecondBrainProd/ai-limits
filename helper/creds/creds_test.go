@@ -9,7 +9,7 @@ import (
 const sample = `{"claudeAiOauth":{"accessToken":"sk-test-token","expiresAt":1800000000000}}`
 
 func TestLoadDarwinFromSecurity(t *testing.T) {
-	s := Source{GOOS: "darwin", RunSecurity: func() ([]byte, error) { return []byte(sample + "\n"), nil }}
+	s := Source{GOOS: "darwin", RunSecurity: func(string) ([]byte, error) { return []byte(sample + "\n"), nil }}
 	tok, err := s.Load()
 	if err != nil {
 		t.Fatal(err)
@@ -42,7 +42,7 @@ func TestLoadMissing(t *testing.T) {
 	if _, err := s.Load(); !errors.Is(err, ErrNotLoggedIn) {
 		t.Fatalf("err = %v", err)
 	}
-	d := Source{GOOS: "darwin", RunSecurity: func() ([]byte, error) { return nil, errors.New("exit 44") }}
+	d := Source{GOOS: "darwin", RunSecurity: func(string) ([]byte, error) { return nil, errors.New("exit 44") }}
 	if _, err := d.Load(); !errors.Is(err, ErrNotLoggedIn) {
 		t.Fatalf("darwin err = %v", err)
 	}
@@ -107,8 +107,65 @@ func TestRunWithTimeoutDoesNotBlock(t *testing.T) {
 }
 
 func TestLoadPropagatesKeychainTimeout(t *testing.T) {
-	s := Source{GOOS: "darwin", RunSecurity: func() ([]byte, error) { return nil, ErrKeychainTimeout }}
+	s := Source{GOOS: "darwin", RunSecurity: func(string) ([]byte, error) { return nil, ErrKeychainTimeout }}
 	if _, err := s.Load(); !errors.Is(err, ErrKeychainTimeout) {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// Regression 20261126: the Keychain held two "Claude Code-credentials" items;
+// the query without an account returned the stale one and the watch showed
+// zeros for a week. The live item sits under the user's account.
+func TestLoadDarwinPicksFreshestOfTwoItems(t *testing.T) {
+	stale := `{"claudeAiOauth":{"accessToken":"stale","expiresAt":1757800000000}}`
+	fresh := `{"claudeAiOauth":{"accessToken":"fresh","expiresAt":1800000000000}}`
+	var asked []string
+	s := Source{GOOS: "darwin", Accounts: []string{"me", ""}, RunSecurity: func(a string) ([]byte, error) {
+		asked = append(asked, a)
+		if a == "me" {
+			return []byte(fresh), nil
+		}
+		return []byte(stale), nil
+	}}
+	tok, err := s.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tok.Access != "fresh" {
+		t.Fatalf("access = %q, want fresh", tok.Access)
+	}
+	if len(asked) != 2 || asked[0] != "me" || asked[1] != "" {
+		t.Fatalf("asked = %q", asked)
+	}
+	// Order must not matter: stale under the user, fresh under "any".
+	s.RunSecurity = func(a string) ([]byte, error) {
+		if a == "me" {
+			return []byte(stale), nil
+		}
+		return []byte(fresh), nil
+	}
+	if tok, _ := s.Load(); tok.Access != "fresh" {
+		t.Fatalf("reversed: access = %q, want fresh", tok.Access)
+	}
+}
+
+func TestLoadDarwinUserItemMissingFallsBack(t *testing.T) {
+	s := Source{GOOS: "darwin", Accounts: []string{"me", ""}, RunSecurity: func(a string) ([]byte, error) {
+		if a == "me" {
+			return nil, errors.New("exit 44")
+		}
+		return []byte(sample), nil
+	}}
+	tok, err := s.Load()
+	if err != nil || tok.Access != "sk-test-token" {
+		t.Fatalf("tok=%+v err=%v", tok, err)
+	}
+}
+
+func TestLaterExpiryZeroNeverExpires(t *testing.T) {
+	never := Token{Access: "a"}
+	soon := Token{Access: "b", ExpiresAt: time.UnixMilli(1800000000000)}
+	if !laterExpiry(never, soon) || laterExpiry(soon, never) {
+		t.Fatal("zero expiry must win")
 	}
 }
